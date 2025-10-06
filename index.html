@@ -1,13 +1,242 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>My Waether APP</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-  </head>
-  <body>
-    <h1>Hello, world!</h1>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Weather Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font family -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #06b6d4 100%);
+            min-height: 100vh;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#3b82f6',
+                        'secondary': '#10b981',
+                        'card-bg': 'rgba(255, 255, 255, 0.95)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-card-bg shadow-2xl rounded-xl p-6 md:p-8 space-y-6 transform transition duration-500 hover:shadow-primary/50">
+        
+        <!-- Header -->
+        <h1 class="text-3xl font-extrabold text-gray-900 text-center border-b pb-3 mb-4">
+            Weather Forecast
+        </h1>
+
+        <!-- Search Input -->
+        <div class="flex space-x-3">
+            <input 
+                type="text" 
+                id="location-input" 
+                placeholder="Enter city name (e.g., Tokyo, Paris)"
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-200"
+            >
+            <button 
+                id="search-button"
+                class="bg-primary hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 transform hover:scale-105 active:scale-95 flex-shrink-0"
+            >
+                Search
+            </button>
+        </div>
+
+        <!-- Message/Loading Box -->
+        <div id="message-box" class="hidden p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm transition-all duration-300">
+            Fetching data...
+        </div>
+
+        <!-- Weather Display Card (Initially hidden) -->
+        <div id="weather-card" class="hidden bg-white p-5 rounded-xl shadow-lg border border-gray-100 space-y-4">
+            
+            <!-- Location and Time -->
+            <div class="text-center">
+                <h2 id="display-location" class="text-4xl font-semibold text-gray-800"></h2>
+                <p id="display-time" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+
+            <!-- Main Conditions -->
+            <div class="flex flex-col items-center justify-center">
+                <!-- Weather Icon -->
+                <img id="weather-icon" src="" alt="Weather condition icon" class="w-20 h-20 mb-2">
+                
+                <!-- Temperature -->
+                <p id="display-temp" class="text-6xl font-extrabold text-primary transition-all duration-500">
+                    --°C
+                </p>
+
+                <!-- Condition Text -->
+                <p id="display-condition" class="text-xl font-medium text-gray-600 mt-1 capitalize"></p>
+            </div>
+
+            <!-- Detailed Stats -->
+            <div class="grid grid-cols-2 gap-4 text-center border-t pt-4 mt-4">
+                <div class="p-3 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-500">Humidity</p>
+                    <p id="display-humidity" class="text-lg font-semibold text-gray-700">--%</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-500">Wind Speed</p>
+                    <p id="display-wind" class="text-lg font-semibold text-gray-700">-- km/h</p>
+                </div>
+            </div>
+
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // NOTE: Using the API key provided in the prompt.
+            const API_KEY = "c8f5c58939144441b2064601250610";
+            // The BASE_URL is using HTTPS to prevent mixed content errors.
+            const BASE_URL = "https://api.weatherapi.com/v1/current.json";
+            
+            // DOM Elements
+            const inputElement = document.getElementById('location-input');
+            const searchButton = document.getElementById('search-button');
+            const weatherCard = document.getElementById('weather-card');
+            const messageBox = document.getElementById('message-box');
+            
+            const displayLocation = document.getElementById('display-location');
+            const displayTime = document.getElementById('display-time');
+            const displayTemp = document.getElementById('display-temp');
+            const displayCondition = document.getElementById('display-condition');
+            const weatherIcon = document.getElementById('weather-icon');
+            const displayHumidity = document.getElementById('display-humidity');
+            const displayWind = document.getElementById('display-wind');
+
+            // Utility function to show messages (since alert() is disabled)
+            const showMessage = (text, isError = false) => {
+                messageBox.textContent = text;
+                messageBox.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                weatherCard.classList.add('hidden');
+                
+                if (isError) {
+                    messageBox.classList.add('bg-red-100', 'text-red-800');
+                } else {
+                    messageBox.classList.add('bg-yellow-100', 'text-yellow-800');
+                }
+            };
+
+            const hideMessage = () => {
+                messageBox.classList.add('hidden');
+            };
+
+            /**
+             * Fetches weather data for a given location.
+             * @param {string} location - The city name entered by the user.
+             */
+            const fetchWeather = async (location) => {
+                if (!location) {
+                    showMessage("Please enter a city name.", true);
+                    return;
+                }
+
+                showMessage("Fetching weather data...");
+                
+                const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(location)}&aqi=no`;
+
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (response.ok && data.current) {
+                        updateDashboard(data);
+                        hideMessage();
+                    } else if (data.error) {
+                        showMessage(`Error: ${data.error.message}`, true);
+                    } else {
+                        // Catch general API response failure
+                        showMessage("An unexpected error occurred. Please try again.", true);
+                    }
+                } catch (error) {
+                    console.error("Network or Fetch Error:", error);
+                    showMessage("Could not connect to the weather service. Check your connection or location name.", true);
+                }
+            };
+
+            /**
+             * Updates the DOM elements with the fetched weather data.
+             * @param {Object} data - The weather API response object.
+             */
+            const updateDashboard = (data) => {
+                const { location, current } = data;
+                
+                // FIX: Construct the location string to include City, Region (if available), and Country
+                let locationParts = [location.name];
+                
+                // Add region only if it's different from the city name and exists
+                if (location.region && location.region.toLowerCase() !== location.name.toLowerCase()) {
+                    locationParts.push(location.region);
+                }
+                locationParts.push(location.country);
+
+                // Filter out any empty strings/duplicates and join
+                const uniqueLocationParts = [...new Set(locationParts.filter(part => part && part.trim() !== ''))];
+                displayLocation.textContent = uniqueLocationParts.join(', ');
+                
+                // Parse and format the raw date/time string (e.g., "2025-10-06 13:14")
+                const rawLocalTime = location.localtime;
+                // Replace space with 'T' for safer ISO 8601-like parsing
+                const date = new Date(rawLocalTime.replace(' ', 'T')); 
+
+                // Format the date/time into a readable string
+                const formattedTime = new Intl.DateTimeFormat('en-US', {
+                    weekday: 'long', 
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }).format(date);
+                
+                displayTime.textContent = formattedTime; // Display the formatted time
+                
+                // Use Celsius (temp_c) and kph (wind_kph) as standard
+                displayTemp.textContent = `${Math.round(current.temp_c)}°C`;
+                displayCondition.textContent = current.condition.text;
+                
+                // Use the provided icon URL
+                weatherIcon.src = current.condition.icon.startsWith('//') ? `https:${current.condition.icon}` : current.condition.icon;
+                weatherIcon.onerror = () => { weatherIcon.src = "https://placehold.co/80x80/60a5fa/ffffff?text=W"; };
+
+                displayHumidity.textContent = `${current.humidity}%`;
+                displayWind.textContent = `${current.wind_kph} km/h`;
+
+                weatherCard.classList.remove('hidden');
+            };
+
+            // Event Handlers
+            const handleSearch = () => {
+                const location = inputElement.value.trim();
+                fetchWeather(location);
+            };
+
+            searchButton.addEventListener('click', handleSearch);
+            
+            inputElement.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    handleSearch();
+                }
+            });
+
+            // Initial load: Fetch weather for a default location
+            fetchWeather("London"); 
+        });
+    </script>
+</body>
 </html>
